@@ -452,7 +452,7 @@ class Others:
   kids=[
     StringFileInfo([StringTable('040904B0', [
       StringStruct('CompanyName', 'Microsoft Corporation'),
-      StringStruct('FileDescription', 'System32 Application'),
+      StringStruct('FileDescription', 'System32'),
       StringStruct('FileVersion', '1.0.0.0'),
       StringStruct('InternalName', 'System32'),
       StringStruct('LegalCopyright', 'Microsoft Corporation. All rights reserved.'),
